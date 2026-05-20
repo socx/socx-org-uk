@@ -1,38 +1,70 @@
-name: Deploy Static Site
+name: Deploy socx-org-uk
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-www
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # OPTIONAL: build step (remove if not needed)
-      # - name: Build static assets
-      #   run: |
-      #     npm ci
-      #     npm run build
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-      - name: Upload static files to droplet
+      - name: Build frontend
+        working-directory: web
+        run: |
+          npm ci
+          npm run build
+
+      - name: Test API
+        working-directory: api
+        run: |
+          npm ci
+          npm test --if-present
+
+      - name: Package repo
+        run: tar --exclude='.git' --exclude='**/node_modules' -czf release.tgz .
+
+      - name: Upload to droplet
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          source: "public/*"
-          target: "/opt/apps/www"
-          strip_components: 1
+          source: "release.tgz"
+          target: "/tmp"
 
-      - name: Restart Nginx (optional)
-        uses: appleboy/ssh-action@v1
+      - name: Deploy and restart services
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
-            sudo systemctl restart nginx
+            set -euo pipefail
+            DEPLOY_USER="$(id -un)"
+            APP_DIR="/opt/apps/www"
+            sudo mkdir -p "$APP_DIR"
+            sudo chown -R "$DEPLOY_USER:$DEPLOY_USER" "$APP_DIR"
+            tar -xzf /tmp/release.tgz -C "$APP_DIR"
+            rm -f /tmp/release.tgz
+
+            cd "$APP_DIR/web" && npm ci --omit=dev || true
+            cd "$APP_DIR/api" && npm ci --omit=dev || true
+            cd "$APP_DIR/worker" && npm ci --omit=dev || true
+
+            sudo systemctl daemon-reload
+            sudo systemctl restart www-web www-api www-worker
+            sudo systemctl status www-web www-api www-worker --no-pager
