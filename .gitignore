@@ -53,3 +53,18 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Node / JavaScript
+node_modules/
+npm-debug.log*
+
+# Build outputs
+dist/
+coverage/
+
+# Environment files
+.env
+.env.*
+
+# Vite
+.vite/
