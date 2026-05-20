@@ -78,11 +78,51 @@ jobs:
             cd "$APP_DIR"
             npm ci
 
+            # Resolve node/npm absolute paths (needed for systemd, which doesn't expand $HOME)
+            NODE_BIN="$(which node)"
+            NPM_BIN="$(which npm)"
+
+            # Create/update systemd unit files
+            sudo tee /etc/systemd/system/www-api.service > /dev/null <<EOF
+[Unit]
+Description=socx API service
+After=network.target
+
+[Service]
+Type=simple
+User=$DEPLOY_USER
+WorkingDirectory=/opt/apps/www/apps/api
+Environment=API_PORT=3002
+Environment=CORS_ORIGIN=*
+ExecStart=$NODE_BIN src/index.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+            sudo tee /etc/systemd/system/www-web.service > /dev/null <<EOF
+[Unit]
+Description=socx Web service
+After=network.target
+
+[Service]
+Type=simple
+User=$DEPLOY_USER
+WorkingDirectory=/opt/apps/www/apps/web
+ExecStart=$NPM_BIN run preview
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
             sudo systemctl daemon-reload
-            for svc in www-web www-api www-worker; do
-              if systemctl list-unit-files | grep -q "^${svc}\.service"; then
-                echo "Restarting $svc..."
-                sudo systemctl restart "$svc" || echo "⚠ $svc restart failed (may not be applicable to this deployment)"
-                sudo systemctl status "$svc" --no-pager || true
-              fi
+            for svc in www-web www-api; do
+              echo "Enabling and restarting $svc..."
+              sudo systemctl enable "$svc"
+              sudo systemctl restart "$svc"
+              sudo systemctl status "$svc" --no-pager || true
             done
