@@ -55,6 +55,10 @@ jobs:
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
             set -euo pipefail
+            
+            # Source nvm environment if available
+            [ -s "$HOME/.nvm/nvm.sh" ] && \. "$HOME/.nvm/nvm.sh"
+            
             DEPLOY_USER="$(id -un)"
             APP_DIR="/opt/apps/www"
             sudo mkdir -p "$APP_DIR"
