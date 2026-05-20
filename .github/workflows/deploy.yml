@@ -87,8 +87,10 @@ jobs:
 
             printf '[Unit]\nDescription=socx Web service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/web\nExecStart=%s run preview\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" "$NPM_BIN" | sudo tee /etc/systemd/system/www-web.service > /dev/null
 
+            printf '[Unit]\nDescription=socx Worker service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/worker\nExecStart=%s start\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" "$NPM_BIN" | sudo tee /etc/systemd/system/www-worker.service > /dev/null
+
             sudo systemctl daemon-reload
-            for svc in www-web www-api; do
+            for svc in www-web www-api www-worker; do
               echo "Enabling and restarting $svc..."
               sudo systemctl enable "$svc"
               sudo systemctl restart "$svc"
