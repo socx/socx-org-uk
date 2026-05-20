@@ -36,7 +36,7 @@ jobs:
         run: |
           ARCHIVE_PATH="$RUNNER_TEMP/release.tgz"
           tar --exclude='.git' --exclude='**/node_modules' -czf "$ARCHIVE_PATH" .
-          echo "ARCHIVE_PATH=$ARCHIVE_PATH" >> "$GITHUB_ENV"
+          cp "$ARCHIVE_PATH" ./release.tgz
 
       - name: Upload to droplet
         uses: appleboy/scp-action@v0.1.7
@@ -44,7 +44,7 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          source: ${{ env.ARCHIVE_PATH }}
+          source: "release.tgz"
           target: "/tmp"
 
       - name: Deploy and restart services
