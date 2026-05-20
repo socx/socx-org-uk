@@ -6,6 +6,12 @@ export default defineConfig({
   server: {
     port: 5172,
     strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3002',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+    },
   },
   preview: {
     port: 5172,

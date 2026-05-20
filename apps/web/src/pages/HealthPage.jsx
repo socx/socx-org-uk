@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-const HEALTH_URL = 'http://localhost:3002/health';
+const HEALTH_URL = '/api/health';
 
 export default function HealthPage() {
   const [data, setData] = useState(null);
@@ -36,7 +36,7 @@ export default function HealthPage() {
     <main className="page">
       <section className="card">
         <h1>Socx API Health</h1>
-        <p className="subtitle">Frontend: http://localhost:5172 | API: http://localhost:3002</p>
+        <p className="subtitle">Socx Platform</p>
 
         {loading ? <p>Loading health check...</p> : null}
         {error ? <p className="error">API error: {error}</p> : null}
