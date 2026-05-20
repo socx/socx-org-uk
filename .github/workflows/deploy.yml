@@ -55,19 +55,6 @@ jobs:
           key: ${{ secrets.DROPLET_SSH_KEY }}
           script: |
             set -euo pipefail
-            
-            # Try to setup Node.js environment
-            if [ -s "$HOME/.nvm/nvm.sh" ]; then
-              \. "$HOME/.nvm/nvm.sh"
-              nvm use node || true
-            fi
-            
-            # Fallback: add common Node paths
-            export PATH="$HOME/.nvm/versions/node/*/bin:$HOME/node_modules/.bin:/usr/local/bin:/usr/bin:$PATH"
-            
-            # Verify npm is available
-            npm --version || (echo "npm not found" && exit 1)
-            
             DEPLOY_USER="$(id -un)"
             APP_DIR="/opt/apps/www"
             sudo mkdir -p "$APP_DIR"
@@ -78,22 +65,13 @@ jobs:
             cd "$APP_DIR"
             npm ci
 
-            # Resolve node/npm absolute paths (needed for systemd, which doesn't expand $HOME)
-            NODE_BIN="$(which node)"
-            NPM_BIN="$(which npm)"
-            
-            # For systemd to use the correct nvm node, include nvm sourcing in ExecStart
-            # Create/update systemd unit files
-            printf '[Unit]\nDescription=socx API service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/api\nEnvironment=API_PORT=3002\nEnvironment=CORS_ORIGIN=*\nExecStart=/bin/bash -c "source $HOME/.nvm/nvm.sh && nvm use node 2>/dev/null; node src/index.js"\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" | sudo tee /etc/systemd/system/www-api.service > /dev/null
-
-            printf '[Unit]\nDescription=socx Web service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/web\nExecStart=/bin/bash -c "source $HOME/.nvm/nvm.sh && nvm use node 2>/dev/null; npm run preview"\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" | sudo tee /etc/systemd/system/www-web.service > /dev/null
-
-            printf '[Unit]\nDescription=socx Worker service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/worker\nExecStart=/bin/bash -c "source $HOME/.nvm/nvm.sh && nvm use node 2>/dev/null; npm start"\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" | sudo tee /etc/systemd/system/www-worker.service > /dev/null
-
             sudo systemctl daemon-reload
             for svc in www-web www-api www-worker; do
-              echo "Enabling and restarting $svc..."
-              sudo systemctl enable "$svc"
-              sudo systemctl restart "$svc"
-              sudo systemctl status "$svc" --no-pager || true
+              if systemctl list-unit-files --type=service | grep -q "^${svc}\.service"; then
+                sudo systemctl enable "$svc"
+                sudo systemctl restart "$svc"
+                sudo systemctl status "$svc" --no-pager || true
+              else
+                echo "Skipping missing unit: ${svc}.service"
+              fi
             done
