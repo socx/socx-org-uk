@@ -83,41 +83,9 @@ jobs:
             NPM_BIN="$(which npm)"
 
             # Create/update systemd unit files
-            sudo tee /etc/systemd/system/www-api.service > /dev/null <<EOF
-[Unit]
-Description=socx API service
-After=network.target
+            printf '[Unit]\nDescription=socx API service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/api\nEnvironment=API_PORT=3002\nEnvironment=CORS_ORIGIN=*\nExecStart=%s src/index.js\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" "$NODE_BIN" | sudo tee /etc/systemd/system/www-api.service > /dev/null
 
-[Service]
-Type=simple
-User=$DEPLOY_USER
-WorkingDirectory=/opt/apps/www/apps/api
-Environment=API_PORT=3002
-Environment=CORS_ORIGIN=*
-ExecStart=$NODE_BIN src/index.js
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-            sudo tee /etc/systemd/system/www-web.service > /dev/null <<EOF
-[Unit]
-Description=socx Web service
-After=network.target
-
-[Service]
-Type=simple
-User=$DEPLOY_USER
-WorkingDirectory=/opt/apps/www/apps/web
-ExecStart=$NPM_BIN run preview
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
+            printf '[Unit]\nDescription=socx Web service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/web\nExecStart=%s run preview\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" "$NPM_BIN" | sudo tee /etc/systemd/system/www-web.service > /dev/null
 
             sudo systemctl daemon-reload
             for svc in www-web www-api; do
