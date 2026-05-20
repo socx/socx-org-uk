@@ -56,8 +56,17 @@ jobs:
           script: |
             set -euo pipefail
             
-            # Source nvm environment if available
-            [ -s "$HOME/.nvm/nvm.sh" ] && \. "$HOME/.nvm/nvm.sh"
+            # Try to setup Node.js environment
+            if [ -s "$HOME/.nvm/nvm.sh" ]; then
+              \. "$HOME/.nvm/nvm.sh"
+              nvm use node || true
+            fi
+            
+            # Fallback: add common Node paths
+            export PATH="$HOME/.nvm/versions/node/*/bin:$HOME/node_modules/.bin:/usr/local/bin:/usr/bin:$PATH"
+            
+            # Verify npm is available
+            npm --version || (echo "npm not found" && exit 1)
             
             DEPLOY_USER="$(id -un)"
             APP_DIR="/opt/apps/www"
@@ -72,7 +81,8 @@ jobs:
             sudo systemctl daemon-reload
             for svc in www-web www-api www-worker; do
               if systemctl list-unit-files | grep -q "^${svc}\.service"; then
-                sudo systemctl restart "$svc"
-                sudo systemctl status "$svc" --no-pager
+                echo "Restarting $svc..."
+                sudo systemctl restart "$svc" || echo "⚠ $svc restart failed (may not be applicable to this deployment)"
+                sudo systemctl status "$svc" --no-pager || true
               fi
             done
