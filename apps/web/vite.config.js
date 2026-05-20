@@ -6,15 +6,11 @@ export default defineConfig({
   server: {
     port: 5172,
     strictPort: true,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:3002',
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-    },
   },
   preview: {
+    host: '127.0.0.1',
     port: 5172,
     strictPort: true,
+    allowedHosts: ['www.socx.org.uk', 'socx.org.uk', 'localhost', '127.0.0.1'],
   },
 });
