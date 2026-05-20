@@ -33,7 +33,10 @@ jobs:
         run: npm run test --workspace=apps/api --if-present
 
       - name: Package repo
-        run: tar --exclude='.git' --exclude='**/node_modules' --exclude='release.tgz' -czf release.tgz .
+        run: |
+          ARCHIVE_PATH="$RUNNER_TEMP/release.tgz"
+          tar --exclude='.git' --exclude='**/node_modules' -czf "$ARCHIVE_PATH" .
+          echo "ARCHIVE_PATH=$ARCHIVE_PATH" >> "$GITHUB_ENV"
 
       - name: Upload to droplet
         uses: appleboy/scp-action@v0.1.7
@@ -41,7 +44,7 @@ jobs:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
-          source: "release.tgz"
+          source: ${{ env.ARCHIVE_PATH }}
           target: "/tmp"
 
       - name: Deploy and restart services
