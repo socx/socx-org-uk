@@ -33,7 +33,7 @@ jobs:
         run: npm run test --workspace=apps/api --if-present
 
       - name: Package repo
-        run: tar --exclude='.git' --exclude='**/node_modules' -czf release.tgz .
+        run: tar --exclude='.git' --exclude='**/node_modules' --exclude='release.tgz' -czf release.tgz .
 
       - name: Upload to droplet
         uses: appleboy/scp-action@v0.1.7
