@@ -81,13 +81,14 @@ jobs:
             # Resolve node/npm absolute paths (needed for systemd, which doesn't expand $HOME)
             NODE_BIN="$(which node)"
             NPM_BIN="$(which npm)"
-
+            
+            # For systemd to use the correct nvm node, include nvm sourcing in ExecStart
             # Create/update systemd unit files
-            printf '[Unit]\nDescription=socx API service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/api\nEnvironment=API_PORT=3002\nEnvironment=CORS_ORIGIN=*\nExecStart=%s src/index.js\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" "$NODE_BIN" | sudo tee /etc/systemd/system/www-api.service > /dev/null
+            printf '[Unit]\nDescription=socx API service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/api\nEnvironment=API_PORT=3002\nEnvironment=CORS_ORIGIN=*\nExecStart=/bin/bash -c "source $HOME/.nvm/nvm.sh && nvm use node 2>/dev/null; node src/index.js"\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" | sudo tee /etc/systemd/system/www-api.service > /dev/null
 
-            printf '[Unit]\nDescription=socx Web service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/web\nExecStart=%s run preview\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" "$NPM_BIN" | sudo tee /etc/systemd/system/www-web.service > /dev/null
+            printf '[Unit]\nDescription=socx Web service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/web\nExecStart=/bin/bash -c "source $HOME/.nvm/nvm.sh && nvm use node 2>/dev/null; npm run preview"\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" | sudo tee /etc/systemd/system/www-web.service > /dev/null
 
-            printf '[Unit]\nDescription=socx Worker service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/worker\nExecStart=%s start\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" "$NPM_BIN" | sudo tee /etc/systemd/system/www-worker.service > /dev/null
+            printf '[Unit]\nDescription=socx Worker service\nAfter=network.target\n\n[Service]\nType=simple\nUser=%s\nWorkingDirectory=/opt/apps/www/apps/worker\nExecStart=/bin/bash -c "source $HOME/.nvm/nvm.sh && nvm use node 2>/dev/null; npm start"\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n' "$DEPLOY_USER" | sudo tee /etc/systemd/system/www-worker.service > /dev/null
 
             sudo systemctl daemon-reload
             for svc in www-web www-api www-worker; do
